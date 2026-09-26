@@ -210,6 +210,8 @@ class Rectangle:
             instead, where the first rectangle is a larger block containing multiple tiles in a list.
         List[Rectangle]:
             Same as the first output, but the ROIs do not include any overlap regions or any area outside the rectangle.
+            Odd overlaps assign the extra trimmed pixel to the preceding tile's
+            trailing edge, keeping adjacent output regions disjoint.
         """
         tile_width, tile_height = tile_shape
         min_width, min_height = min_shape
@@ -217,6 +219,9 @@ class Rectangle:
             containing_rect = self
 
         half_overlap = (overlap_shape[0] // 2, overlap_shape[1] // 2)
+        # Complement the leading trim so odd overlaps are fully partitioned.
+        trailing_overlap = (overlap_shape[0] - half_overlap[0],
+                            overlap_shape[1] - half_overlap[1])
         tile_spacing_x = tile_width  - overlap_shape[0]
         tile_spacing_y = tile_height - overlap_shape[1]
         num_tiles_round_up = (int(math.ceil((self.width() - overlap_shape[0]) / tile_spacing_x)),
@@ -247,9 +252,9 @@ class Rectangle:
                 if r > 0:
                     unique_tile.min_y += half_overlap[1]
                 if c < num_tiles[0]-1:
-                    unique_tile.max_x -= half_overlap[0]
+                    unique_tile.max_x -= trailing_overlap[0]
                 if r < num_tiles[1]-1:
-                    unique_tile.max_y -= half_overlap[1]
+                    unique_tile.max_y -= trailing_overlap[1]
                 unique_tile = unique_tile.get_intersection(self)
 
                 if include_partials: # Crop the tile to the valid area and use it
